@@ -114,4 +114,125 @@ resource "aws_route_table_association" "private_rt_1" {
 
 
 
-####### Security Group #######
+####### Security Group #######      || Web-Tier Security Group
+
+resource "aws_security_group" "web_tier_sg" {
+  name        = "Web_Tier_SG"
+  description = "Security Group for Public Web Tier Instance"
+  vpc_id      = aws_vpc.my_vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    description = "Allow inbound traffic from Web-Tier SG"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    description = "Allow inbound traffic from Web-Tier SG"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    description = "Allow inbound traffic from Web-Tier SG"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+  tags = {
+    Name = "Web_Tier_SG"
+  }
+}
+
+
+
+####### Security Group #######      || App-Tier Security Group
+
+resource "aws_security_group" "app_tier_sg" {
+  name        = "App_Tier_SG"
+  description = "Security Group for Private App Tier Instance"
+  vpc_id      = aws_vpc.my_vpc.id
+
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    description     = "Allow inbound traffic from Web-Tier SG"
+    security_groups = [aws_security_group.web_tier_sg.id]
+  }
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    description     = "Allow inbound traffic from Web-Tier SG"
+    security_groups = [aws_security_group.web_tier_sg.id]
+  }
+
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    description     = "Allow inbound traffic from Web-Tier SG"
+    security_groups = [aws_security_group.web_tier_sg.id]
+  }
+
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+  tags = {
+    Name = "Web_Tier_SG"
+  }
+}
+
+
+
+########## Creating EC2 Instances ##########   || Web Tier EC2 Instance
+
+resource "aws_instance" "web_tier_instance" {
+
+  ami                         = var.web-ec2-ami
+  instance_type               = var.web-ec2-instance-type
+  subnet_id                   = aws_subnet.public_subnet_1.id
+  vpc_security_group_ids      = [aws_security_group.web_tier_sg.id]
+  associate_public_ip_address = true
+
+  tags = {
+    Name = "Web_Tier_Instance"
+  }
+}
+
+
+########## Creating EC2 Instances ##########   || App Tier EC2 Instance
+
+resource "aws_instance" "app_tier_instance" {
+
+  ami                         = var.web-ec2-ami
+  instance_type               = var.web-ec2-instance-type
+  subnet_id                   = aws_subnet.private_subnet_1.id
+  vpc_security_group_ids      = [aws_security_group.app_tier_sg.id]
+  associate_public_ip_address = false
+
+  tags = {
+    Name = "App_Tier_Instance"
+  }
+}
